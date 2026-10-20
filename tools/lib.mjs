@@ -41,15 +41,15 @@ export const sourceDirs = dirs => (dirs.length ? dirs : ['samples', ...(existsSy
 
 export const readSources = dirs => dirs.flatMap(dir => readdirSync(dir).filter(f => f.endsWith('.mmd')).sort().map(f => ({ file: join(dir, f), source: readFileSync(join(dir, f), 'utf8') })))
 
-export const drawWithSvg = (drawPele, source, palette, columns) => {
-  let svg = ''
+export const drawWithSvgs = (drawPele, source, palette, columns) => {
+  const svgs = []
   const tracked = (text, options) => {
     const result = render(text, options)
-    svg = result.svg
+    svgs.push(result.svg)
     return result
   }
   const art = drawPele(tracked, source, palette, columns)
-  return { art, svg }
+  return { art, svgs }
 }
 
 export const fanOut = (url, data) => {

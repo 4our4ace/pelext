@@ -34,15 +34,13 @@ const isText = (row, c) => {
   return true
 }
 
-const lostText = (art, svg, add) => {
+const lostText = (art, svgs, add) => {
   const lines = art.art.split('\n').map(l => [...l]), width = Math.max(...lines.map(l => l.length))
   const columns = Array.from({ length: width }, (_, c) => lines.map(l => l[c] ?? ' ').join(''))
   const readable = `${art.art.replace(/\n/g, ' ')} ${columns.join(' ')}`
-  for (const [, attrs, raw] of svg.matchAll(/<(?:text|tspan)\b([^>]*)>([^<]+)</g)) {
-    const text = raw.replace(/&(?:amp|lt|gt|quot|#39);/g, e => ENTITIES[e]).trim()
-    if (!text || /rotate|writing-mode/.test(attrs) || (text.length === 1 && !/\w/.test(text))) continue
-    if (!text.split(' ').every(word => readable.includes(word))) add('lost-text', 0, JSON.stringify(text))
-  }
+  const lost = svgs.map(svg => [...svg.matchAll(/<(?:text|tspan)\b([^>]*)>([^<]+)</g)].map(([, attrs, raw]) => [attrs, raw.replace(/&(?:amp|lt|gt|quot|#39);/g, e => ENTITIES[e]).trim()])
+    .filter(([attrs, text]) => text && !/rotate|writing-mode/.test(attrs) && (text.length > 1 || /\w/.test(text)) && !text.split(' ').every(word => readable.includes(word))))
+  for (const [, text] of lost.reduce((a, b) => (b.length < a.length ? b : a), lost[0] ?? [])) add('lost-text', 0, JSON.stringify(text))
 }
 
 const cellDefects = (art, add) => {
@@ -85,11 +83,11 @@ const boxDefects = (art, add) => {
   })
 }
 
-export const defects = (art, svg, palette) => {
+export const defects = (art, svgs, palette) => {
   const found = {}
   const add = (kind, row, detail) => (found[kind] ??= []).push(`r${row}: ${detail}`)
   if (art.type === 'sequence') boxDefects(art, add)
-  lostText(art, svg, add)
+  lostText(art, svgs, add)
   cellDefects(art, add)
   colorDefects(art, palette.canvas, add)
   return found

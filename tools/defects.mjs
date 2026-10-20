@@ -1,6 +1,6 @@
 import { isMainThread, parentPort, workerData } from 'node:worker_threads'
 import { defects } from './detect.mjs'
-import { PALETTES, THEMES, drawWithSvg, enginePath, fanOut, loadEngine, parseArgs, readSources, sourceDirs } from './lib.mjs'
+import { PALETTES, THEMES, drawWithSvgs, enginePath, fanOut, loadEngine, parseArgs, readSources, sourceDirs } from './lib.mjs'
 
 if (!isMainThread) {
   const { engine, dirs, themes, widths, index, count } = workerData
@@ -9,9 +9,9 @@ if (!isMainThread) {
   for (const { file, source } of readSources(dirs).filter((_, i) => i % count === index)) {
     for (const theme of themes) for (const columns of widths) {
       total++
-      const { art, svg } = drawWithSvg(drawPele, source, PALETTES[theme], columns)
+      const { art, svgs } = drawWithSvgs(drawPele, source, PALETTES[theme], columns)
       if (!art) { missed++; continue }
-      for (const [kind, list] of Object.entries(defects(art, svg, PALETTES[theme]))) found.push({ kind, type: art.type, at: `${file} ${theme} ${columns}`, detail: list[0] })
+      for (const [kind, list] of Object.entries(defects(art, svgs, PALETTES[theme]))) found.push({ kind, type: art.type, at: `${file} ${theme} ${columns}`, detail: list[0] })
     }
   }
   parentPort.postMessage({ total, missed, found })

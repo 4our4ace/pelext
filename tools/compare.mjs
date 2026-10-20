@@ -1,8 +1,8 @@
 import { isMainThread, parentPort, workerData } from 'node:worker_threads'
 import { defects } from './detect.mjs'
-import { PALETTES, THEMES, WIDTHS, drawWithSvg, enginePath, fanOut, loadEngine, parseArgs, readSources, sourceDirs } from './lib.mjs'
+import { PALETTES, THEMES, WIDTHS, drawWithSvgs, enginePath, fanOut, loadEngine, parseArgs, readSources, sourceDirs } from './lib.mjs'
 
-const kinds = (drawn, palette) => (drawn.art ? Object.keys(defects(drawn.art, drawn.svg, palette)).sort() : ['not drawn'])
+const kinds = (drawn, palette) => (drawn.art ? Object.keys(defects(drawn.art, drawn.svgs, palette)).sort() : ['not drawn'])
 
 if (!isMainThread) {
   const { base, engine, dirs, index, count } = workerData
@@ -11,7 +11,7 @@ if (!isMainThread) {
   for (const { file, source } of readSources(dirs).filter((_, i) => i % count === index)) {
     for (const theme of THEMES) for (const columns of WIDTHS) {
       total++
-      const palette = PALETTES[theme], a = drawWithSvg(before, source, palette, columns), b = drawWithSvg(after, source, palette, columns)
+      const palette = PALETTES[theme], a = drawWithSvgs(before, source, palette, columns), b = drawWithSvgs(after, source, palette, columns)
       if (JSON.stringify(a.art) === JSON.stringify(b.art)) continue
       changes.push({ at: `${file} ${theme} ${columns}`, before: kinds(a, palette), after: kinds(b, palette), art: [a.art?.art ?? '(not drawn)', b.art?.art ?? '(not drawn)'] })
     }

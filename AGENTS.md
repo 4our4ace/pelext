@@ -43,7 +43,7 @@ The defect kinds, from `tools/detect.mjs`:
 
 | Kind | Flags |
 | --- | --- |
-| `lost-text` | a word of the SVG's text that appears nowhere in the drawing |
+| `lost-text` | a word of Pele's text that appears nowhere in the drawing, checked against every layout Pele rendered for it and reported for the one that loses the fewest |
 | `touching` | a vertical border right against a letter |
 | `touch-fill` | a letter right against a block fill |
 | `nearmiss` | a line end that stops one blank cell short of the glyph it points at |
@@ -54,6 +54,8 @@ The defect kinds, from `tools/detect.mjs`:
 | `invisible`, `low-contrast`, `low-contrast-canvas` | text in its background's color, under 3:1 against its background, under 2:1 against the canvas |
 
 Run `defects` with `--themes` set to all 16 palette names after a color change: the default checks 3.
+
+Known flags that are not glitches: `nearmiss` on xychart line series, which start at the first category, one cell right of the y-axis.
 
 ## Engine facts that bite
 

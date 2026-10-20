@@ -1,21 +1,45 @@
 {
   "name": "pelext",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Mermaid diagrams drawn on the terminal's cell grid: Pele lays them out, pelext draws them with box lines, block fills and real text.",
   "license": "MIT",
   "author": "4our4ace",
   "homepage": "https://github.com/4our4ace/pelext",
   "repository": "github:4our4ace/pelext",
-  "keywords": ["mermaid", "terminal", "diagrams", "pele", "ansi", "tui"],
+  "keywords": [
+    "mermaid",
+    "terminal",
+    "diagrams",
+    "pele",
+    "ansi",
+    "tui"
+  ],
   "type": "module",
   "exports": {
-    ".": { "types": "./dist/pelext.d.ts", "default": "./dist/pelext.js" },
-    "./palettes": { "types": "./dist/palettes.d.ts", "default": "./dist/palettes.js" },
-    "./pele": { "types": "./dist/pele.d.ts", "default": "./dist/pele.js" }
+    ".": {
+      "types": "./dist/pelext.d.ts",
+      "default": "./dist/pelext.js"
+    },
+    "./palettes": {
+      "types": "./dist/palettes.d.ts",
+      "default": "./dist/palettes.js"
+    },
+    "./pele": {
+      "types": "./dist/pele.d.ts",
+      "default": "./dist/pele.js"
+    }
   },
-  "bin": { "pelext": "bin/pelext.mjs" },
-  "files": ["dist", "bin", "THIRD_PARTY_NOTICES.md"],
-  "engines": { "node": ">=20" },
+  "bin": {
+    "pelext": "bin/pelext.mjs"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc -p .",
     "test": "tsc -p . && node --test test/*.test.mjs",

@@ -136,8 +136,7 @@ const arcPoints = (p0, rx, ry, phi, large, sweep, p1) => {
         return [p0, p1];
     rx = Math.abs(rx);
     ry = Math.abs(ry);
-    const r = phi * Math.PI / 180, cos = Math.cos(r), sin = Math.sin(r), dx = (p0[0] - p1[0]) / 2, dy = (p0[1] - p1[1]) / 2;
-    const x1 = cos * dx + sin * dy, y1 = -sin * dx + cos * dy;
+    const r = phi * Math.PI / 180, cos = Math.cos(r), sin = Math.sin(r), dx = (p0[0] - p1[0]) / 2, dy = (p0[1] - p1[1]) / 2, x1 = cos * dx + sin * dy, y1 = -sin * dx + cos * dy;
     const lambda = x1 * x1 / (rx * rx) + y1 * y1 / (ry * ry);
     if (lambda > 1) {
         rx *= Math.sqrt(lambda);
@@ -145,8 +144,7 @@ const arcPoints = (p0, rx, ry, phi, large, sweep, p1) => {
     }
     const num = rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1;
     const k = (large === sweep ? -1 : 1) * Math.sqrt(Math.max(0, num / (rx * rx * y1 * y1 + ry * ry * x1 * x1)));
-    const cx1 = k * rx * y1 / ry, cy1 = -k * ry * x1 / rx;
-    const cx = cos * cx1 - sin * cy1 + (p0[0] + p1[0]) / 2, cy = sin * cx1 + cos * cy1 + (p0[1] + p1[1]) / 2;
+    const cx1 = k * rx * y1 / ry, cy1 = -k * ry * x1 / rx, cx = cos * cx1 - sin * cy1 + (p0[0] + p1[0]) / 2, cy = sin * cx1 + cos * cy1 + (p0[1] + p1[1]) / 2;
     const angle = (ux, uy, vx, vy) => Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
     const t1 = angle(1, 0, (x1 - cx1) / rx, (y1 - cy1) / ry);
     let dt = angle((x1 - cx1) / rx, (y1 - cy1) / ry, (-x1 - cx1) / rx, (-y1 - cy1) / ry);
@@ -411,6 +409,7 @@ class Canvas {
     plot = false;
     tracing = false;
     clash = false;
+    round = false;
     constructor(cols, rows) {
         const n = cols * rows, bytes = () => new Uint8Array(n), paints = (k = 1) => new Int32Array(n * k).fill(NONE);
         this.cols = cols;
@@ -582,8 +581,7 @@ const isBox = (pts) => pts.length === 5 && pts.every((p, i) => i === 0 || axisOf
 const trace = (cv, pts, closed, style) => {
     const cells = [], last = closed ? pts.length : pts.length - 1;
     for (let i = 0; i < last; i++) {
-        const a = pts[i], b = pts[(i + 1) % pts.length];
-        const n = Math.max(1, Math.ceil(Math.hypot((b[0] - a[0]) / CW, (b[1] - a[1]) / CH) * 8));
+        const a = pts[i], b = pts[(i + 1) % pts.length], n = Math.max(1, Math.ceil(Math.hypot((b[0] - a[0]) / CW, (b[1] - a[1]) / CH) * 8));
         for (let k = 0; k <= n; k++) {
             const c = col(a[0] + (b[0] - a[0]) * k / n), r = row(a[1] + (b[1] - a[1]) * k / n), prev = cells[cells.length - 1];
             if (!prev || prev[0] !== c || prev[1] !== r)
@@ -687,8 +685,7 @@ const fillArea = (cv, sample, box, color, smooth = false, sheer = false) => {
     const sx0 = Math.max(0, Math.floor(box.x0 / (CW / 2))), sx1 = Math.ceil(box.x1 / (CW / 2));
     const sy0 = Math.max(0, Math.floor(box.y0 / (CH / 2))), sy1 = Math.ceil(box.y1 / (CH / 2));
     const c0 = Math.max(0, col(box.x0)), c1 = col(box.x1), r0 = Math.max(0, row(box.y0)), r1 = row(box.y1);
-    const ax0 = Math.min(sx0, 2 * c0), ax1 = Math.max(sx1, 2 * c1 + 1), ay0 = Math.min(sy0, 2 * r0), ay1 = Math.max(sy1, 2 * r1 + 1);
-    const w = ax1 - ax0 + 1;
+    const ax0 = Math.min(sx0, 2 * c0), ax1 = Math.max(sx1, 2 * c1 + 1), ay0 = Math.min(sy0, 2 * r0), ay1 = Math.max(sy1, 2 * r1 + 1), w = ax1 - ax0 + 1;
     if (w <= 0 || ay1 < ay0)
         return;
     const mask = new Uint8Array(w * (ay1 - ay0 + 1));
@@ -715,8 +712,7 @@ const fillArea = (cv, sample, box, color, smooth = false, sheer = false) => {
                     cv.clear(c, r);
 };
 const clean = (pts) => {
-    const out = pts.filter((p, i, a) => i === 0 || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 0.01);
-    const first = out[0], last = out[out.length - 1];
+    const out = pts.filter((p, i, a) => i === 0 || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 0.01), first = out[0], last = out[out.length - 1];
     if (out.length > 2 && first && last && Math.hypot(first[0] - last[0], first[1] - last[1]) < 0.01)
         out.pop();
     return out;
@@ -824,7 +820,7 @@ const drawPatch = (cv, s, inside) => {
         const only = inside[0], left = c1 - c0 + 1 - only.w, wide = x0 - c0 * CW > (c1 + 1) * CW - x1;
         if (s.thin && !cv.plot && left % 2) {
             if (left === 1) {
-                if (wide)
+                if (wide !== !!(cv.arms[cv.index(wide ? c1 + 1 : c0 - 1, mid)] & UP))
                     c1++;
                 else
                     c0--;
@@ -1127,8 +1123,12 @@ const ribbon = (s, rects) => {
     const top = flatten(segs[0]), bottom = flatten(segs[2]).reverse(), thread = top.map((p, i) => [(p[0] + bottom[i][0]) / 2, (p[1] + bottom[i][1]) / 2]), n = thread.length, inset = (y, b) => Math.min(Math.max(y, b.y0 + CH / 4), b.y1 - CH / 4);
     for (const [p, q] of [[thread[0], thread[1]], [thread[n - 1], thread[n - 2]]])
         for (const b of rects)
-            if ((Math.abs(b.x0 - p[0]) < 1 || Math.abs(b.x1 - p[0]) < 1) && p[1] >= b.y0 && p[1] <= b.y1 && b.h >= CH / 2 && row(q[1]) === row(inset(p[1], b)))
-                p[1] = inset(p[1], b);
+            if ((Math.abs(b.x0 - p[0]) < 1 || Math.abs(b.x1 - p[0]) < 1) && p[1] >= b.y0 && p[1] <= b.y1 && b.h >= CH / 2) {
+                if (row(q[1]) === row(inset(p[1], b)))
+                    p[1] = inset(p[1], b);
+                else if (row(b.y0 - CH / 2) === row(p[1]) || row(b.y1 + CH / 2) === row(p[1]))
+                    p[0] = (b.x0 + b.x1) / 2;
+            }
     return thread;
 };
 const drawShape = (cv, s, texts, rects = []) => {
@@ -1634,12 +1634,13 @@ const draw = (svg, palette, stack = false, limit = Infinity, tight = false) => {
             t.r = Math.max(t.r, ...texts.filter(o => !o.vertical && o.cy < t.cy && o.c <= t.c + 1 && o.c + o.w >= t.c).map(o => o.r + 1));
     const cv = new Canvas(Math.ceil(wx(Math.max(vw + spill + (2 * MARGIN + gutter) * CW, right + MARGIN * CW)) / CW) + 1, Math.max(Math.ceil(wy(vh + 2 * MARGIN * CH) / CH) + (floor === undefined ? 1 : 2), ...texts.map(t => (t.vertical ? t.r + t.w + 1 : 0))));
     cv.plot = series > 0 || /\bpele-gantt\b/.test(root.attrs.class ?? '');
+    cv.round = rigid.length > 0;
     if (palette.text && canvasColor !== undefined && canvasColor >= 0)
         cv.paper = canvasColor;
     if (ink !== undefined && ink >= 0)
         cv.ink = ink;
     for (const s of shapes) {
-        if (lifelines && s.thin && s.fill === BG && shapes.some(o => (o.fill ?? BG) >= 0 && !o.thin && o.box.x0 <= s.box.x0 && o.box.x1 >= s.box.x1 && o.box.y0 <= s.box.y0 && o.box.y1 >= s.box.y1))
+        if (lifelines && s.thin && s.fill === BG && (s.stroke === undefined || shapes.some(o => (o.fill ?? BG) >= 0 && !o.thin && o.box.x0 <= s.box.x0 && o.box.x1 >= s.box.x1 && o.box.y0 <= s.box.y0 && o.box.y1 >= s.box.y1)))
             s.fill = undefined;
         if (s.fill !== undefined && s.fill <= SHADE && s.polys.length === 1 && isBox(s.polys[0]) && textsIn(s, texts).length)
             s.fill = FG;
@@ -1793,13 +1794,13 @@ const draw = (svg, palette, stack = false, limit = Infinity, tight = false) => {
         for (let k = 1; k <= most && !d; k++)
             d = fits(-k) ? -k : fits(k) ? k : 0;
         const left = g.some(o => hard(o, o.c - 1, RIGHT)), right = g.some(o => hard(o, o.c + o.w, LEFT));
-        const nudge = d ? 0 : right && !left && g.every(o => coverable(o, o.c - 1) && !hard(o, o.c - 2, RIGHT) && within(o.c - 1, o.w)) ? -1
-            : left && !right && g.every(o => coverable(o, o.c + o.w) && !hard(o, o.c + o.w + 1, LEFT) && within(o.c + 1, o.w)) ? 1 : 0;
-        const lift = d || nudge || !g.some(o => covered(o) || other(o, o.c - 1) || other(o, o.c + o.w)) ? 0 : [-1, 1].find(k => g.every(o => clear(o, o.c, o.r + k))) ?? 0;
+        const nudge = d ? 0 : right && !left && g.every(o => coverable(o, o.c - 1) && !hard(o, o.c - 2, RIGHT)) ? -1
+            : left && !right && g.every(o => coverable(o, o.c + o.w) && !hard(o, o.c + o.w + 1, LEFT)) || g.every(o => o.owner && o.c - 1 === col(o.owner.box.x0) && o.c + o.w + 1 < col(o.owner.box.x1)) ? 1 : 0;
+        const [shift, lift] = d || nudge || !g.some(o => covered(o) || other(o, o.c - 1) || other(o, o.c + o.w) || (cv.arms[cv.index(o.c, o.r)] & cv.arms[cv.index(o.c + o.w - 1, o.r)] & (LEFT | RIGHT)) === (LEFT | RIGHT)) ? [0, 0] : [[0, -1], [0, 1], [1, -1], [1, 1], [-1, -1], [-1, 1]].find(([x, k]) => g.every(o => clear(o, o.c + x, o.r + k))) ?? [0, 0];
         for (const o of g) {
             const from = o.c, framed = lifelines && o.owner !== undefined && o.owner.fill === undefined && onCanvas(o.c, o.r);
             const step = d || nudge || g.length < 2 || !stuck(o) ? 0 : [-1, 1].find(k => clear(o, o.c + k)) ?? 0;
-            o.c += d + nudge + step;
+            o.c += d + nudge + step + shift;
             if (lift)
                 toRow(o, o.r + lift);
             for (let x = from - 1; x <= from + o.w && (d || step); x++) {
@@ -1818,6 +1819,14 @@ const draw = (svg, palette, stack = false, limit = Infinity, tight = false) => {
             const open = (x) => !seen(x, o.r) || cut(x, o.r), joined = tab && open(o.c - 2) && cv.quad[cv.index(o.c - 3, o.r) * 4] === tab.fill ? 1 : 0;
             if (backdrop !== undefined && !tab && (other(o, o.c - 2) || other(o, o.c + o.w + 1)))
                 cv.clash = true;
+            if (!lifelines && o.owner?.fill !== undefined)
+                for (const x of [o.c - 1, o.c + o.w]) {
+                    const i = cv.index(x, o.r);
+                    if (wall(x, o.r, x < o.c ? RIGHT : LEFT) && x !== col(o.owner.box.x0) && x !== col(o.owner.box.x1) && cv.quad[i * 4] === o.owner.fill && cv.quad[i * 4 + 3] === o.owner.fill) {
+                        cv.clear(x, o.r);
+                        inks.fill(0);
+                    }
+                }
             if (backdrop !== undefined)
                 for (let x = o.c - 1 - joined; x <= o.c + o.w; x++)
                     if (cv.ch[cv.index(x, o.r)] === null && (x >= o.c && x < o.c + o.w || open(x) || wall(x, o.r, LEFT | RIGHT))) {
@@ -1890,6 +1899,19 @@ const majority = (quad) => {
         }
     }
     return best;
+};
+const rim = (cv, i, m) => {
+    let n = 0, top = 0, left = 0;
+    for (let k = 0; k < 16; k++)
+        if (cv.fine[i * 16 + k] === m) {
+            n++;
+            if (k < 8)
+                top++;
+            if (!(k & 1))
+                left++;
+        }
+    const x = i % cv.cols, all = (j, c, near) => (near && j >= 0 && j < cv.smooth.length ? [0, 1, 2, 3].every(k => (cv.quad[j * 4 + k] === BG ? NONE : cv.quad[j * 4 + k]) === c) : c === NONE), toward = (inner, outer, near = true, far = true) => all(inner, m, near) && all(outer, NONE, far);
+    return n > 0 && n < 8 && (top === n && toward(i - cv.cols, i + cv.cols) || top === 0 && toward(i + cv.cols, i - cv.cols) || left === n && toward(i - 1, i + 1, x > 0, x < cv.cols - 1) || left === 0 && toward(i + 1, i - 1, x < cv.cols - 1, x > 0));
 };
 const BLANK = { ch: ' ', fg: NONE, bg: NONE, bold: false };
 const WIDE = { ch: '', fg: NONE, bg: NONE, bold: false };
@@ -2001,8 +2023,10 @@ const lookOf = (cv, i) => {
         if (look)
             return look;
     }
-    if (ch === null && !arms && !braille && (a <= SHADE || b <= SHADE || c <= SHADE || d <= SHADE))
-        return solid(majority([a, b, c, d]));
+    if (ch === null && !arms && !braille && (a <= SHADE || b <= SHADE || c <= SHADE || d <= SHADE)) {
+        const m = majority([a, b, c, d]), s = Math.min(a, b, c, d), x = i % cv.cols, near = (j) => majority(Array.from(cv.quad.subarray(j * 4, j * 4 + 4), v => (v === BG ? NONE : v)));
+        return m === NONE && x > 0 && x < cv.cols - 1 && near(i - 1) === s && near(i + 1) === s ? solid(s) : cv.round && cv.smooth[i] && m <= SHADE && rim(cv, i, m) ? BLANK : solid(m);
+    }
     if (ch === null && !arms && !braille && flat && (a === NONE || cv.faint[i] !== NONE))
         return cv.faint[i] !== NONE ? { ch: '·', fg: cv.faint[i], bg: a, bold: false } : BLANK;
     let bg = flat ? a : majority([a, b, c, d]);

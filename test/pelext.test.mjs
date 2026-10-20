@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { drawPele, toAnsi } from 'pelext'
 import { PALETTES } from 'pelext/palettes'
@@ -482,4 +483,51 @@ test('toAnsi colors each row of the drawing and keeps its characters', () => {
   assert.equal(rows.length, art.rows.length)
   assert.ok(rows.some(r => r.includes('\x1b[0;38;2;137;180;250m')))
   assert.deepEqual(rows.map(r => r.replace(/\x1b\[[\d;]*m/g, '').trimEnd()), art.art.split('\n'))
+})
+
+test('a mono pie draws its shaded slices only on rows the pie covers at least half of', () => {
+  const coverage = s => {
+    const level = '▁▂▃▄▅▆▇'.indexOf(s.text[0]) + 1
+    return s.text.trim() === '' && !s.bg ? 0 : level && !s.bg ? (s.inverse ? 1 - level / 8 : level / 8) : 1
+  }
+  const source = readFileSync(new URL('../samples/pie.mmd', import.meta.url), 'utf8')
+  for (const columns of [40, 60]) {
+    const color = drawPele(render, source, mocha, columns), mono = drawPele(render, source, PALETTES.mono, columns)
+    const half = color.rows.map(spans => spans.some(s => coverage(s) >= 0.5))
+    mono.art.split('\n').forEach((line, r) => { if (/[▓▒░▚]/.test(line.replace(/■.*$/, ''))) assert.ok(half[r], `row ${r}: ${line}`) })
+  }
+})
+
+const stacked = (art, cell, above, below) => {
+  const rows = art.split('\n').map(line => [...line])
+  return rows.some((row, r) => row.some((ch, c) => ch === cell && r > 0 && !(cell === ' ' && /\w/.test(row[c - 1] ?? '') && /\w/.test(row[c + 1] ?? '')) && above.includes(rows[r - 1][c]) && below.includes(rows[r + 1]?.[c] ?? '')))
+}
+
+test('a sequence frame label never erases the lifelines beside it', () => {
+  const art = drawPele(render, 'sequenceDiagram\n  critical Login page\n    A-)A: Layout Ship it Layout Layout Edges\n  end\n  alt Layout Login page Edges\n    B-->>C: DB DB OK\n  else retry\n  end\n  critical worker auth\n  end\n  critical Edges Parse\n  end', mocha, 120)
+  assert.ok(!stacked(art.art, ' ', '│┼├┤', '│┼├┤'), art.art)
+})
+
+test('a frame tab, an else label or a self-message label never covers the border it meets', () => {
+  const cases = [['sequenceDiagram\n  participant A as retry Layout retry\n  participant B as auth\n  actor C as C Layout\n  actor D as C\n  loop long running background job snake_case cache 100\n  end\n  par node\n  end\n  C->B: long running background job Parse\n  loop GPU abc\n    C-->>B: GPU 100\n  end\n  loop v123 Draw\n    C->>C: Layout\n  end', [70, 80, 100, 120]], ['sequenceDiagram\n  participant B as Ship it cache Ship it\n  actor C\n  participant D as nave caf C\n  alt x Queue long running background job\n    C->C: snake_case Edges\n    E-)E: v123 auth\n  end\n  opt Queue DB\n    B->C: long running background job Edges\n  end\n  alt C C\n  else Parse DB Layout\n    C-)E: Layout Draw auth\n  end', [100]], ['sequenceDiagram\n  actor B as Draw C Ship it\n  opt API\n  end\n  loop abc Ship it\n  end\n  loop cache\n  end\n  opt Login page retry retry\n  end\n  C-->C: worker OK auth\n  par Layout\n  end', [100, 160]]]
+  for (const [source, widths] of cases) for (const columns of widths) {
+    const art = drawPele(render, source, mocha, columns)
+    assert.ok(!stacked(art.art, '█', '╭├╮┤', '│├┤╰╯'), art.art)
+  }
+})
+
+test('a subgraph title with no room between edges hides the edge under its band instead of touching it', () => {
+  for (const columns of [60, 100]) assert.doesNotMatch(drawPele(render, 'flowchart LR\n  n3[\\"Draw"/]\n  n5["OK naïve café Layout DB"]\n  n6{"Parse 100%"}\n  n3 ==>|long running background job snake_case Login page| n5\n  n3 <--> n5\n  subgraph s1 [nave caf]\n    n5\n  end', mocha, columns).art, /[│┃]\w|\w[│┃]/)
+})
+
+test('a thin sankey flow reaches a node whose edge only grazes its row', () => {
+  for (const columns of [30, 40, 50]) assert.doesNotMatch(drawPele(render, 'sankey-beta\nDraw,abc,841\nx,abc,77\nsnake_case,x,11\nsnake_case,Draw,3', mocha, columns).art, /╴ [▁▂▃▄▅▆▇█]/)
+})
+
+test('a sankey label that would hide the end of a flow moves to a free row beside it', () => {
+  for (const columns of [60, 100]) assert.doesNotMatch(drawPele(render, 'sankey-beta\nnave caf cache DB,nave caf,586\nnave caf,retry,2\nnave caf,Draw,3\nParse snake_case OK,C,627\nretry,Draw,61\nnave caf cache DB,retry,260', PALETTES.mono, columns).art, /[┬┴┼]\w|\w[┬┴┼]/)
+})
+
+test('a one-cell hole between two cells of the same shade is filled', () => {
+  for (const columns of [30, 100]) assert.doesNotMatch(drawPele(render, 'sankey-beta\nx,node,577\nnode,Render,26\nRender,Layout,129', PALETTES.mono, columns).art, /([▓▒░]) \1/)
 })
