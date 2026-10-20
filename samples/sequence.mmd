@@ -1,0 +1,8 @@
+sequenceDiagram
+  participant U as User
+  participant X as pelext
+  participant P as Pele
+  U->>X: draw a diagram
+  X->>P: render(text)
+  P-->>X: SVG
+  X-->>U: cells
