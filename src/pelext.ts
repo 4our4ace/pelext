@@ -279,17 +279,17 @@ const bbox = (polys: Pt[][]): Bounds => {
 }
 
 const warp = (features: Feature[], unit: number, cross: number, grid: number[] = [], rows = 0): ((v: number) => number) => {
-  const anchors: Pt[] = [], isGrid = (f: number) => grid.some(e => Math.abs(e - f) < 1.5), apart = (f: Feature) => spans.every(([lo, hi]) => f.hi + cross <= lo || f.lo - cross >= hi)
-  let start: number | null = null, last = 0, prevCell = 0, spans: Pt[] = []
+  const anchors: Pt[] = [], isGrid = (f: number) => grid.some(e => Math.abs(e - f) < 1.5), apart = (f: Feature) => spans.every(([lo, hi]) => f.hi + cross <= lo || f.lo - cross >= hi), clash = (f: Feature) => spans.some(([lo, hi, at, loop]) => (f.loop || loop) && f.at > at && f.hi + cross > lo && f.lo - cross < hi)
+  let start: number | null = null, last = 0, prevCell = 0, spans: [number, number, number, boolean?][] = []
   for (const f of [...features].sort((a, b) => a.at - b.at)) {
-    if (start !== null && f.at - last < 1.5 && (last - start < unit * 0.45 || apart(f))) { spans.push([f.lo, f.hi]); f.cell = prevCell; continue }
+    if (start !== null && f.at - last < 1.5 && (last - start < unit * 0.45 || apart(f)) && !clash(f)) { spans.push([f.lo, f.hi, f.at, f.loop]); f.cell = prevCell; continue }
     if (start !== null && (f.at - start < unit * 0.45 || f.above?.cell === prevCell - 1) && apart(f)) {
-      spans.push([f.lo, f.hi]); anchors.push([f.at, (prevCell + 0.5) * unit]); last = f.at; f.cell = prevCell
+      spans.push([f.lo, f.hi, f.at, f.loop]); anchors.push([f.at, (prevCell + 0.5) * unit]); last = f.at; f.cell = prevCell
       continue
     }
     const gap = start === null ? 0 : Math.max(1, Math.round((f.at - last) / unit))
     const cell: number = start === null ? Math.floor(f.at / unit) : prevCell + (rows && isGrid(f.at) && isGrid(last) ? rows : gap)
-    anchors.push([f.at, (cell + 0.5) * unit]); spans = [[f.lo, f.hi]]
+    anchors.push([f.at, (cell + 0.5) * unit]); spans = [[f.lo, f.hi, f.at, f.loop]]
     f.cell = prevCell = cell; start = last = f.at
   }
   const first = anchors[0], end = anchors[anchors.length - 1]
@@ -305,7 +305,7 @@ const warp = (features: Feature[], unit: number, cross: number, grid: number[] =
   }
 }
 
-type Feature = { at: number; lo: number; hi: number; above?: Feature; cell?: number }
+type Feature = { at: number; lo: number; hi: number; above?: Feature; cell?: number; loop?: boolean }
 
 const BOX: Record<'light' | 'heavy', Record<number, string>> = {
   light: { 1: '╵', 2: '╶', 4: '╷', 8: '╴', 5: '│', 10: '─', 3: '╰', 6: '╭', 12: '╮', 9: '╯', 7: '├', 11: '┴', 13: '┤', 14: '┬', 15: '┼' },
@@ -1097,8 +1097,8 @@ const draw = (svg: string, palette: PelePalette, stack = false, limit = Infinity
   const featuresY = texts.filter(t => !t.vertical && !t.loose).map(t => { const f: Feature = { at: t.cy, lo: t.cx - t.w * CW / 2, hi: t.cx + t.w * CW / 2, above: t.above && lineOf.get(t.above) }; lineOf.set(t, f); return f })
   const plain = [paint('var(--_s)', 1), paint('var(--_a)', 1), BG]
   for (const s of shapes) {
-    const box4 = s.polys.length === 1 && s.subs[0]?.closed === true && isBox(s.polys[0]!), bare = s.stroke === undefined || s.stroke === BG
-    s.small = s.box.w <= CW * 2.2 && s.box.h <= CH * 1.1 && !s.subs.some(sub => !sub.closed && sub.segs.some(seg => turn(seg) !== undefined))
+    const box4 = s.polys.length === 1 && s.subs[0]?.closed === true && isBox(s.polys[0]!), bare = s.stroke === undefined || s.stroke === BG, loop = s.subs.some(sub => !sub.closed && sub.segs.some(seg => turn(seg) !== undefined))
+    s.small = s.box.w <= CW * 2.2 && s.box.h <= CH * 1.1 && !loop
     if (s.point) featuresY.push({ at: (s.box.y0 + s.box.y1) / 2, lo: s.box.x0, hi: s.box.x1 })
     if (s.small && s.node !== undefined) for (const at of s.kind === 'path' ? [s.box.y0, s.box.y1] : [(s.box.y0 + s.box.y1) / 2]) featuresY.push({ at, lo: s.box.x0, hi: s.box.x1 })
     s.thin = !s.small && s.bar === undefined && s.box.h < CH * 1.5 && (box4 || s.subs.length === 1 && s.subs[0]!.closed && s.box.h < CH && s.subs[0]!.segs.every(seg => seg.k === 'L'))
@@ -1116,8 +1116,8 @@ const draw = (svg: string, palette: PelePalette, stack = false, limit = Infinity
         if (seg.k !== 'L') continue
         const p0 = seg.pts[0]!, p1 = seg.pts[1]!
         const axis = axisOf(p1[0] - p0[0], p1[1] - p0[1], 0.02)
-        if (axis === 'h') featuresY.push({ at: (p0[1] + p1[1]) / 2, lo: Math.min(p0[0], p1[0]), hi: Math.max(p0[0], p1[0]) })
-        if (axis === 'v') featuresX.push({ at: (p0[0] + p1[0]) / 2, lo: Math.min(p0[1], p1[1]), hi: Math.max(p0[1], p1[1]) })
+        if (axis === 'h') featuresY.push({ at: (p0[1] + p1[1]) / 2, lo: Math.min(p0[0], p1[0]), hi: Math.max(p0[0], p1[0]), loop })
+        if (axis === 'v') featuresX.push({ at: (p0[0] + p1[0]) / 2, lo: Math.min(p0[1], p1[1]), hi: Math.max(p0[1], p1[1]), loop })
       }
     }
   }

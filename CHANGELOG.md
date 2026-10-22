@@ -5,6 +5,7 @@
 ### Fixed
 
 - State diagrams and flowcharts: a self-loop on a box three rows tall comes back on a row of its own instead of folding onto the box's bottom border, and a self-loop on a slanted shape or below a box shows both of its legs.
+- State, class and ER diagrams: two or three self-loops on one side of a box each leave and come back on rows of their own, and a loop's return leg no longer lands on the box's divider.
 - Class diagrams and timelines: a member or event level with a row stretched to keep another label's lines together no longer lands on its box's divider or its pill's edge.
 - Mindmaps: a branch squeezed to no length at a narrow width ends in a line stub instead of a braille dot.
 

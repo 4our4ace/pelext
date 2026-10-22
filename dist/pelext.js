@@ -333,16 +333,16 @@ const bbox = (polys) => {
     return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0 };
 };
 const warp = (features, unit, cross, grid = [], rows = 0) => {
-    const anchors = [], isGrid = (f) => grid.some(e => Math.abs(e - f) < 1.5), apart = (f) => spans.every(([lo, hi]) => f.hi + cross <= lo || f.lo - cross >= hi);
+    const anchors = [], isGrid = (f) => grid.some(e => Math.abs(e - f) < 1.5), apart = (f) => spans.every(([lo, hi]) => f.hi + cross <= lo || f.lo - cross >= hi), clash = (f) => spans.some(([lo, hi, at, loop]) => (f.loop || loop) && f.at > at && f.hi + cross > lo && f.lo - cross < hi);
     let start = null, last = 0, prevCell = 0, spans = [];
     for (const f of [...features].sort((a, b) => a.at - b.at)) {
-        if (start !== null && f.at - last < 1.5 && (last - start < unit * 0.45 || apart(f))) {
-            spans.push([f.lo, f.hi]);
+        if (start !== null && f.at - last < 1.5 && (last - start < unit * 0.45 || apart(f)) && !clash(f)) {
+            spans.push([f.lo, f.hi, f.at, f.loop]);
             f.cell = prevCell;
             continue;
         }
         if (start !== null && (f.at - start < unit * 0.45 || f.above?.cell === prevCell - 1) && apart(f)) {
-            spans.push([f.lo, f.hi]);
+            spans.push([f.lo, f.hi, f.at, f.loop]);
             anchors.push([f.at, (prevCell + 0.5) * unit]);
             last = f.at;
             f.cell = prevCell;
@@ -351,7 +351,7 @@ const warp = (features, unit, cross, grid = [], rows = 0) => {
         const gap = start === null ? 0 : Math.max(1, Math.round((f.at - last) / unit));
         const cell = start === null ? Math.floor(f.at / unit) : prevCell + (rows && isGrid(f.at) && isGrid(last) ? rows : gap);
         anchors.push([f.at, (cell + 0.5) * unit]);
-        spans = [[f.lo, f.hi]];
+        spans = [[f.lo, f.hi, f.at, f.loop]];
         f.cell = prevCell = cell;
         start = last = f.at;
     }
@@ -1484,8 +1484,8 @@ const draw = (svg, palette, stack = false, limit = Infinity, tight = false) => {
     const featuresY = texts.filter(t => !t.vertical && !t.loose).map(t => { const f = { at: t.cy, lo: t.cx - t.w * CW / 2, hi: t.cx + t.w * CW / 2, above: t.above && lineOf.get(t.above) }; lineOf.set(t, f); return f; });
     const plain = [paint('var(--_s)', 1), paint('var(--_a)', 1), BG];
     for (const s of shapes) {
-        const box4 = s.polys.length === 1 && s.subs[0]?.closed === true && isBox(s.polys[0]), bare = s.stroke === undefined || s.stroke === BG;
-        s.small = s.box.w <= CW * 2.2 && s.box.h <= CH * 1.1 && !s.subs.some(sub => !sub.closed && sub.segs.some(seg => turn(seg) !== undefined));
+        const box4 = s.polys.length === 1 && s.subs[0]?.closed === true && isBox(s.polys[0]), bare = s.stroke === undefined || s.stroke === BG, loop = s.subs.some(sub => !sub.closed && sub.segs.some(seg => turn(seg) !== undefined));
+        s.small = s.box.w <= CW * 2.2 && s.box.h <= CH * 1.1 && !loop;
         if (s.point)
             featuresY.push({ at: (s.box.y0 + s.box.y1) / 2, lo: s.box.x0, hi: s.box.x1 });
         if (s.small && s.node !== undefined)
@@ -1510,9 +1510,9 @@ const draw = (svg, palette, stack = false, limit = Infinity, tight = false) => {
                 const p0 = seg.pts[0], p1 = seg.pts[1];
                 const axis = axisOf(p1[0] - p0[0], p1[1] - p0[1], 0.02);
                 if (axis === 'h')
-                    featuresY.push({ at: (p0[1] + p1[1]) / 2, lo: Math.min(p0[0], p1[0]), hi: Math.max(p0[0], p1[0]) });
+                    featuresY.push({ at: (p0[1] + p1[1]) / 2, lo: Math.min(p0[0], p1[0]), hi: Math.max(p0[0], p1[0]), loop });
                 if (axis === 'v')
-                    featuresX.push({ at: (p0[0] + p1[0]) / 2, lo: Math.min(p0[1], p1[1]), hi: Math.max(p0[1], p1[1]) });
+                    featuresX.push({ at: (p0[0] + p1[0]) / 2, lo: Math.min(p0[1], p1[1]), hi: Math.max(p0[1], p1[1]), loop });
             }
         }
     }

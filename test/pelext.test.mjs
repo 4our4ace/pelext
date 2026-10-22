@@ -473,6 +473,15 @@ test('a self-loop on the side of a three-row box comes back on a row of its own'
   }
 })
 
+test('two or three self-loops on one side of a box each leave and come back on rows of their own', () => {
+  const two = 'stateDiagram-v2\n  Shown --> Shown: you send your own message\n  Shown --> Shown: Esc or a failed turn\n  Shown --> Gone: you send it\n  Shown --> Gone: illi answers, next one asked'
+  for (const columns of [60, 100]) {
+    const lines = drawPele(render, two, mocha, columns).art.split('\n'), at = lines.findIndex(l => l.includes('├──╮')), c = lines[at].indexOf('├──╮')
+    assert.deepEqual(lines.slice(at, at + 4).map(l => l.slice(c, c + 4)), ['├──╮', '├─╮│', '│◄╯│', '│◄─╯'])
+  }
+  assert.doesNotMatch(drawPele(render, 'stateDiagram-v2\n  A --> A: one\n  A --> A: two\n  A --> A: three', mocha, 80).art, /╯◄/)
+})
+
 test('text level with a row stretched to keep a label\'s lines together gets its own row, not a divider or pill edge', () => {
   const classes = 'classDiagram\n  class GPU2 {\n    #String layout\n    +parse(x) int\n    -parse()\n    +retry()\n  }\n  class Render47 {\n    String api\n    #bool shipit\n    +navecaf(x) int\n    +x() void\n  }\n  class Loginpage48 {\n    -int node\n    -100()\n    -shipit() void\n    +v123() void\n  }\n  GPU2 *-- GPU2 : snake_case'
   const timeline = 'timeline\n    2014 : Layout Draw Edges : OK long running background job Ship it Parse worker Edges\n    1997 : Queue C\n  section 100\n    1996 : abc\n    2026 : Edges : x Queue : v123 abc Parse\n    1998 : cache Login page worker worker : x auth Queue'
