@@ -1,6 +1,6 @@
 {
   "name": "pelext",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Mermaid diagrams drawn on the terminal's cell grid: Pele lays them out, pelext draws them with box lines, block fills and real text.",
   "license": "MIT",
   "author": "4our4ace",

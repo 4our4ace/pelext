@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-22
+
 ### Fixed
 
 - State diagrams and flowcharts: a self-loop on a box three rows tall comes back on a row of its own instead of folding onto the box's bottom border, and a self-loop on a slanted shape or below a box shows both of its legs.
