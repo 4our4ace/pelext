@@ -238,11 +238,11 @@ const axisOf = (x: number, y: number, tol = 0.08): 'h' | 'v' | null => {
   return len < 1e-9 ? null : Math.abs(x) <= tol * len ? 'v' : Math.abs(y) <= tol * len ? 'h' : null
 }
 
+const turn = (seg: Seg) => { const p = seg.pts, a = p[0]!, c1 = p[1]!, c2 = p[p.length - 2]!, b = p[p.length - 1]!, k = Math.abs(c1[1] - a[1]) > Math.abs(c1[0] - a[0]) ? 1 : 0; return seg.k === 'C' && (c1[k] - a[k]) * (b[k] - c2[k]) < 0 ? k : undefined }
 const elbow = (seg: Seg): Pt[] | null => {
-  const pts = seg.pts, a = pts[0]!, b = pts[pts.length - 1]!
+  const pts = seg.pts, a = pts[0]!, b = pts[pts.length - 1]!, c1 = pts[1]!, c2 = pts[pts.length - 2]!, k = turn(seg)
   if (seg.k === 'P') { const e = bbox([pts]); if (e.w > CW || e.h > CW) return null }
-  const c1 = pts[1]!, c2 = pts[pts.length - 2]!, k = Math.abs(c1[1] - a[1]) > Math.abs(c1[0] - a[0]) ? 1 : 0, far = (a[k] + 3 * c1[k] + 3 * c2[k] + b[k]) / 8
-  if (seg.k === 'C' && (c1[k] - a[k]) * (b[k] - c2[k]) < 0) return k ? [a, [a[0], far], [b[0], far], b] : [a, [far, a[1]], [far, b[1]], b]
+  if (k !== undefined) { const far = (a[k] + 3 * c1[k] + 3 * c2[k] + b[k]) / 8; return k ? [a, [a[0], far], [b[0], far], b] : [a, [far, a[1]], [far, b[1]], b] }
   const t0 = axisOf(c1[0] - a[0], c1[1] - a[1]) ?? axisOf(c2[0] - a[0], c2[1] - a[1])
   const t1 = axisOf(b[0] - c2[0], b[1] - c2[1]) ?? axisOf(b[0] - c1[0], b[1] - c1[1])
   if (!t0 || !t1) return null
@@ -279,11 +279,11 @@ const bbox = (polys: Pt[][]): Bounds => {
 }
 
 const warp = (features: Feature[], unit: number, cross: number, grid: number[] = [], rows = 0): ((v: number) => number) => {
-  const anchors: Pt[] = [], isGrid = (f: number) => grid.some(e => Math.abs(e - f) < 1.5)
+  const anchors: Pt[] = [], isGrid = (f: number) => grid.some(e => Math.abs(e - f) < 1.5), apart = (f: Feature) => spans.every(([lo, hi]) => f.hi + cross <= lo || f.lo - cross >= hi)
   let start: number | null = null, last = 0, prevCell = 0, spans: Pt[] = []
   for (const f of [...features].sort((a, b) => a.at - b.at)) {
-    if (start !== null && f.at - last < 1.5) { spans.push([f.lo, f.hi]); f.cell = prevCell; continue }
-    if (start !== null && (f.at - start < unit * 0.45 || f.above?.cell === prevCell - 1) && spans.every(([lo, hi]) => f.hi + cross <= lo || f.lo - cross >= hi)) {
+    if (start !== null && f.at - last < 1.5 && (last - start < unit * 0.45 || apart(f))) { spans.push([f.lo, f.hi]); f.cell = prevCell; continue }
+    if (start !== null && (f.at - start < unit * 0.45 || f.above?.cell === prevCell - 1) && apart(f)) {
       spans.push([f.lo, f.hi]); anchors.push([f.at, (prevCell + 0.5) * unit]); last = f.at; f.cell = prevCell
       continue
     }
@@ -874,7 +874,7 @@ const drawShape = (cv: Canvas, s: Shape, texts: TextRun[], rects: Bounds[] = [])
     const e = seg.k !== 'L' ? elbow(seg) : null
     if (seg.k === 'L' && axisOf(p1[0] - p0[0], p1[1] - p0[1], 0.02)) gridSegment(cv, p0, p1, style)
     else if (e) for (let i = 1; i < e.length; i++) gridSegment(cv, e[i - 1]!, e[i]!, style)
-    else brailleLine(cv, flatten(seg), stroke, s.dashed)
+    else if (seg.k !== 'L' || p0[0] !== p1[0] || p0[1] !== p1[1]) brailleLine(cv, flatten(seg), stroke, s.dashed)
   }
 }
 
@@ -1098,7 +1098,7 @@ const draw = (svg: string, palette: PelePalette, stack = false, limit = Infinity
   const plain = [paint('var(--_s)', 1), paint('var(--_a)', 1), BG]
   for (const s of shapes) {
     const box4 = s.polys.length === 1 && s.subs[0]?.closed === true && isBox(s.polys[0]!), bare = s.stroke === undefined || s.stroke === BG
-    s.small = s.box.w <= CW * 2.2 && s.box.h <= CH * 1.1
+    s.small = s.box.w <= CW * 2.2 && s.box.h <= CH * 1.1 && !s.subs.some(sub => !sub.closed && sub.segs.some(seg => turn(seg) !== undefined))
     if (s.point) featuresY.push({ at: (s.box.y0 + s.box.y1) / 2, lo: s.box.x0, hi: s.box.x1 })
     if (s.small && s.node !== undefined) for (const at of s.kind === 'path' ? [s.box.y0, s.box.y1] : [(s.box.y0 + s.box.y1) / 2]) featuresY.push({ at, lo: s.box.x0, hi: s.box.x1 })
     s.thin = !s.small && s.bar === undefined && s.box.h < CH * 1.5 && (box4 || s.subs.length === 1 && s.subs[0]!.closed && s.box.h < CH && s.subs[0]!.segs.every(seg => seg.k === 'L'))

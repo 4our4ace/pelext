@@ -460,8 +460,28 @@ test('a self-loop is drawn with box lines instead of braille dots', () => {
   for (const columns of [80, 120]) {
     const art = drawPele(render, source, mocha, columns).art
     assert.doesNotMatch(art, /[\u2801-\u28ff]/)
-    assert.match(art, /╰─*╯/)
+    assert.match(art, /╰[─┄]*╯/)
   }
+})
+
+test('a self-loop on the side of a three-row box comes back on a row of its own', () => {
+  const state = 'stateDiagram-v2\n  [*] --> None\n  None --> Asking: turn ends\n  Asking --> Shown: reply arrives, saved\n  Asking --> None: quit, dropped\n  Shown --> None: you send or /clear, saved empty\n  Shown --> Shown: quit and restart'
+  for (const [source, name] of [[state, 'Shown'], ['flowchart TD\n  A[Start] --> A\n  A --> B[End]', 'Start']]) for (const columns of [60, 100]) {
+    const lines = drawPele(render, source, mocha, columns).art.split('\n'), at = lines.findIndex(l => l.includes(name)), c = lines[at].indexOf('├─╮')
+    assert.ok(c > 0)
+    assert.equal(lines[at + 1].slice(c, c + 3), '│◄╯')
+  }
+})
+
+test('text level with a row stretched to keep a label\'s lines together gets its own row, not a divider or pill edge', () => {
+  const classes = 'classDiagram\n  class GPU2 {\n    #String layout\n    +parse(x) int\n    -parse()\n    +retry()\n  }\n  class Render47 {\n    String api\n    #bool shipit\n    +navecaf(x) int\n    +x() void\n  }\n  class Loginpage48 {\n    -int node\n    -100()\n    -shipit() void\n    +v123() void\n  }\n  GPU2 *-- GPU2 : snake_case'
+  const timeline = 'timeline\n    2014 : Layout Draw Edges : OK long running background job Ship it Parse worker Edges\n    1997 : Queue C\n  section 100\n    1996 : abc\n    2026 : Edges : x Queue : v123 abc Parse\n    1998 : cache Login page worker worker : x auth Queue'
+  assert.doesNotMatch(drawPele(render, classes, mocha, 100).art, /─[+#~-]?[A-Za-z]/)
+  assert.doesNotMatch(drawPele(render, timeline, mocha, 100).art, /[▄▀][A-Za-z0-9]|[A-Za-z0-9][▄▀]/)
+})
+
+test('a mindmap branch squeezed to no length ends in a line stub, not a braille dot', () => {
+  for (const columns of [30, 50]) assert.doesNotMatch(drawPele(render, 'mindmap\n  root((Project))\n    Plan\n      Scope\n      Budget\n    Build\n      Code\n      Test\n    Ship', mocha, columns).art, /[⠁-⣿]/)
 })
 
 test('the lines of a wrapped label stay on consecutive rows', () => {

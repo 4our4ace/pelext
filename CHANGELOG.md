@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- State diagrams and flowcharts: a self-loop on a box three rows tall comes back on a row of its own instead of folding onto the box's bottom border, and a self-loop on a slanted shape or below a box shows both of its legs.
+- Class diagrams and timelines: a member or event level with a row stretched to keep another label's lines together no longer lands on its box's divider or its pill's edge.
+- Mindmaps: a branch squeezed to no length at a narrow width ends in a line stub instead of a braille dot.
+
 ## [0.2.0] - 2026-10-20
 
 ### Fixed
