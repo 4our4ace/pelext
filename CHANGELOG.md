@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Character widths follow Unicode 18.0's own data: wide and fullwidth characters, emoji such as ✅, ❌ and ⭐ among them, take two cells; combining and enclosing marks, format characters, controls and Hangul medial vowels and final consonants take none. A drawing's width counts them the same way.
+- The 16 palettes are rebuilt from each scheme's published colors, mapped onto the palette fields by one rule for all of them. On a light scheme, node and series colors that read under 3:1 on its background come after the ones that read well.
+
 ## [0.2.1] - 2026-10-22
 
 ### Fixed

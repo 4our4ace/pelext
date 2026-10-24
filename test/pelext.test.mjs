@@ -127,6 +127,14 @@ test('the art copy is plain text with the same rows as the drawing', () => {
   lines.forEach((line, i) => assert.equal(line, art.rows[i].map(s => s.text).join('').trimEnd()))
 })
 
+test('the width counts two cells for each wide emoji in the widest row', () => {
+  const cells = line => [...line].reduce((n, ch) => n + (/[✅❌⭐]/u.test(ch) ? 2 : 1), 0)
+  for (const columns of [40, 100]) {
+    const art = drawPele(render, 'pie\n  "✅ ship ⭐" : 60\n  "❌ drop" : 40', mocha, columns)
+    assert.equal(art.width, Math.max(...art.art.split('\n').map(cells)))
+  }
+})
+
 test('edges run right up to filled nodes', () => {
   const art = drawPele(render, 'mindmap\n  root\n    a\n      b\n        c', mocha, 100)
   assert.match(art.art, /─█a█─+█b█─/)
