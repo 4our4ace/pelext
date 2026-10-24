@@ -54,6 +54,7 @@ const points = []
 for (let cp = 0; cp < MAX; cp++) if (cp === 0 || widths[cp] !== widths[cp - 1]) points.push([cp, widths[cp]])
 if (points[0][1] !== 0) throw new Error('table must start with width 0 at U+0000')
 for (let cp = 0; cp < 0x300; cp++) if (widths[cp] !== (cp < 0x20 || (cp >= 0x7f && cp < 0xa0) ? 0 : 1)) throw new Error(`fast path wrong at ${cp.toString(16)}`)
+for (let cp = 0x300; cp < 0x1100; cp++) if (widths[cp] === 2) throw new Error(`wide below U+1100 at ${cp.toString(16)}, where the engine's output loop counts one cell`)
 
 const SEP = '.,:;'
 let runs = ''
@@ -74,15 +75,18 @@ const charClass = (name, has) => {
 }
 const wide = charClass('wide', w => w === 2), zero = charClass('zero', w => w === 0 || w === JOINS)
 
-const rewrite = (path, pattern, text) => {
+const rewrite = (path, edits) => {
   const source = readFileSync(path, 'utf8')
-  if (source.match(new RegExp(pattern.source, 'gm'))?.length !== 1) throw new Error(`${path}: expected one ${pattern}`)
-  const next = source.replace(pattern, () => text)
-  writeFileSync(path, next)
-  return next !== source
+  let next = source
+  for (const [pattern, text] of edits) {
+    if (next.match(new RegExp(pattern.source, 'gm'))?.length !== 1) throw new Error(`${path}: expected one ${pattern}`)
+    next = next.replace(pattern, () => text)
+  }
+  return { path, next, changed: next !== source }
 }
-const engine = rewrite(new URL('../src/pelext.ts', import.meta.url), /WIDTH_RUNS = '[0-9a-z.,:;]*'/m, `WIDTH_RUNS = '${runs}'`)
-const detect = [rewrite(new URL('detect.mjs', import.meta.url), /^const WIDE = .*$/m, `const WIDE = /${wide.text}/u`), rewrite(new URL('detect.mjs', import.meta.url), /^const ZERO = .*$/m, `const ZERO = /${zero.text}/u`)].some(Boolean)
+const engine = rewrite(new URL('../src/pelext.ts', import.meta.url), [[/WIDTH_RUNS = '[0-9a-z.,:;]*'/m, `WIDTH_RUNS = '${runs}'`]])
+const detect = rewrite(new URL('detect.mjs', import.meta.url), [[/^const WIDE = .*$/m, `const WIDE = /${wide.text}/u`], [/^const ZERO = .*$/m, `const ZERO = /${zero.text}/u`]])
+for (const file of [engine, detect]) if (file.changed) writeFileSync(file.path, file.next)
 
 console.log(`Unicode ${eawVersion}: ${points.length} change points, ${wide.runs} wide runs, ${zero.runs} zero-width runs`)
-console.log(`src/pelext.ts ${engine ? 'updated' : 'unchanged'}, tools/detect.mjs ${detect ? 'updated' : 'unchanged'}`)
+console.log(`src/pelext.ts ${engine.changed ? 'updated' : 'unchanged'}, tools/detect.mjs ${detect.changed ? 'updated' : 'unchanged'}`)
