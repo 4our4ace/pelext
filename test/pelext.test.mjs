@@ -135,6 +135,16 @@ test('the width counts two cells for each wide emoji in the widest row', () => {
   }
 })
 
+test('combining marks stay on the letter they mark and take no cell', () => {
+  for (const label of ['हिन्दी', 'café', 'がけ']) {
+    const art = drawPele(render, `flowchart LR\n  A[${label}] --> B[x]`, mocha, 60)
+    const bare = drawPele(render, `flowchart LR\n  A[${label.replace(/\p{Mn}/gu, '')}] --> B[x]`, mocha, 60)
+    assert.ok(art.art.includes(label), label)
+    assert.equal(art.art.replace(/\p{Mn}/gu, ''), bare.art)
+    assert.equal(art.width, bare.width)
+  }
+})
+
 test('edges run right up to filled nodes', () => {
   const art = drawPele(render, 'mindmap\n  root\n    a\n      b\n        c', mocha, 100)
   assert.match(art.art, /─█a█─+█b█─/)

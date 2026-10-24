@@ -26,12 +26,13 @@ const gc = new Array(MAX).fill('Cn')
 const gcVersion = parse(gcPath, (a, b, v) => { if (!/^[A-Z][a-z]$/.test(v)) throw new Error(`bad gc ${v}`); gc.fill(v, a, b + 1) })
 if (!eawVersion || eawVersion !== gcVersion) throw new Error(`versions differ: ${eawVersion} ${gcVersion}`)
 
-const JAMO_TRAILING = [[0x1160, 0x11ff], [0xd7b0, 0xd7ff]]
+const within = (cp, list) => list.some(([a, b]) => cp >= a && cp <= b)
+const SELECTORS = [[0xfe00, 0xfe0f], [0xe0100, 0xe01ef]], JAMO_TRAILING = [[0x1160, 0x11ff], [0xd7b0, 0xd7ff]]
+const JOINS = 3
 const widthOf = cp => {
-  if (gc[cp] === 'Cc') return 0
   if (cp === 0xad) return 1
-  if (gc[cp] === 'Mn' || gc[cp] === 'Me' || gc[cp] === 'Cf') return 0
-  if (JAMO_TRAILING.some(([a, b]) => cp >= a && cp <= b)) return 0
+  if (gc[cp] === 'Cc' || gc[cp] === 'Cf' || within(cp, SELECTORS)) return 0
+  if (gc[cp] === 'Mn' || gc[cp] === 'Me' || within(cp, JAMO_TRAILING)) return JOINS
   if (eaw[cp] === 'W' || eaw[cp] === 'F') return 2
   return 1
 }
@@ -54,19 +55,24 @@ for (let cp = 0; cp < MAX; cp++) if (cp === 0 || widths[cp] !== widths[cp - 1]) 
 if (points[0][1] !== 0) throw new Error('table must start with width 0 at U+0000')
 for (let cp = 0; cp < 0x300; cp++) if (widths[cp] !== (cp < 0x20 || (cp >= 0x7f && cp < 0xa0) ? 0 : 1)) throw new Error(`fast path wrong at ${cp.toString(16)}`)
 
-const SEP = '.,:'
+const SEP = '.,:;'
 let runs = ''
 for (let i = 1; i < points.length; i++) runs += (points[i][0] - points[i - 1][0]).toString(36) + SEP[points[i][1]]
 const decoded = [[0, 0]]
-for (let at = 0, re = /([0-9a-z]+)([.,:])/g, m = re.exec(runs); m; m = re.exec(runs)) decoded.push([at += parseInt(m[1], 36), SEP.indexOf(m[2])])
+for (let at = 0, re = /([0-9a-z]+)([.,:;])/g, m = re.exec(runs); m; m = re.exec(runs)) decoded.push([at += parseInt(m[1], 36), SEP.indexOf(m[2])])
 if (JSON.stringify(decoded) !== JSON.stringify(points)) throw new Error('round trip failed')
 
 const u = cp => `\\u{${cp.toString(16).toUpperCase()}}`
-const wide = []
-for (let i = 0; i < points.length; i++) if (points[i][1] === 2) wide.push([points[i][0], (points[i + 1]?.[0] ?? MAX) - 1])
-const wideClass = `[${wide.map(([a, b]) => (a === b ? u(a) : `${u(a)}-${u(b)}`)).join('')}]`
-const check = new RegExp(wideClass, 'u')
-for (let cp = 0; cp < MAX; cp++) if (!(cp >= 0xd800 && cp <= 0xdfff) && check.test(String.fromCodePoint(cp)) !== (widths[cp] === 2)) throw new Error(`wide class wrong at ${cp.toString(16)}`)
+const charClass = (name, has) => {
+  const runs = []
+  for (let i = 0; i < points.length; i++) if (has(points[i][1])) runs.push([points[i][0], (points[i + 1]?.[0] ?? MAX) - 1])
+  const merged = runs.reduce((all, run) => { const prev = all.at(-1); if (prev && prev[1] + 1 === run[0]) prev[1] = run[1]; else all.push([...run]); return all }, [])
+  const text = `[${merged.map(([a, b]) => (a === b ? u(a) : `${u(a)}-${u(b)}`)).join('')}]`
+  const check = new RegExp(text, 'u')
+  for (let cp = 0; cp < MAX; cp++) if (!(cp >= 0xd800 && cp <= 0xdfff) && check.test(String.fromCodePoint(cp)) !== has(widths[cp])) throw new Error(`${name} class wrong at ${cp.toString(16)}`)
+  return { text, runs: merged.length }
+}
+const wide = charClass('wide', w => w === 2), zero = charClass('zero', w => w === 0 || w === JOINS)
 
 const rewrite = (path, pattern, text) => {
   const source = readFileSync(path, 'utf8')
@@ -75,8 +81,8 @@ const rewrite = (path, pattern, text) => {
   writeFileSync(path, next)
   return next !== source
 }
-const engine = rewrite(new URL('../src/pelext.ts', import.meta.url), /WIDTH_RUNS = '[0-9a-z.,:]*'/m, `WIDTH_RUNS = '${runs}'`)
-const detect = rewrite(new URL('detect.mjs', import.meta.url), /^const WIDE = .*$/m, `const WIDE = /${wideClass}/u`)
+const engine = rewrite(new URL('../src/pelext.ts', import.meta.url), /WIDTH_RUNS = '[0-9a-z.,:;]*'/m, `WIDTH_RUNS = '${runs}'`)
+const detect = [rewrite(new URL('detect.mjs', import.meta.url), /^const WIDE = .*$/m, `const WIDE = /${wide.text}/u`), rewrite(new URL('detect.mjs', import.meta.url), /^const ZERO = .*$/m, `const ZERO = /${zero.text}/u`)].some(Boolean)
 
-console.log(`Unicode ${eawVersion}: ${points.length} change points, ${wide.length} wide runs`)
+console.log(`Unicode ${eawVersion}: ${points.length} change points, ${wide.runs} wide runs, ${zero.runs} zero-width runs`)
 console.log(`src/pelext.ts ${engine ? 'updated' : 'unchanged'}, tools/detect.mjs ${detect ? 'updated' : 'unchanged'}`)
