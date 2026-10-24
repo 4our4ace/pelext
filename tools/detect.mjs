@@ -27,6 +27,12 @@ const toCells = art => art.rows.map(row => row.flatMap(s => [...s.text].flatMap(
   return ZERO.test(ch) ? [] : WIDE.test(ch) ? [cell, { ...cell, ch: '' }] : [cell]
 })))
 
+const cellsOf = line => [...line].reduce((cells, ch) => {
+  if (!ZERO.test(ch)) cells.push(...(WIDE.test(ch) ? [ch, ''] : [ch]))
+  else if (cells.length) cells[cells.length - 1] += ch
+  return cells
+}, [])
+
 const isText = (row, c) => {
   const cell = row[c], before = row[c - 1]?.ch ?? ' ', after = row[c + 1]?.ch ?? ' '
   if (!cell || GLYPH.test(cell.ch)) return false
@@ -36,7 +42,7 @@ const isText = (row, c) => {
 }
 
 const lostText = (art, svgs, add) => {
-  const lines = art.art.split('\n').map(l => [...l]), width = Math.max(...lines.map(l => l.length))
+  const lines = art.art.split('\n').map(cellsOf), width = Math.max(...lines.map(l => l.length))
   const columns = Array.from({ length: width }, (_, c) => lines.map(l => l[c] ?? ' ').join(''))
   const readable = `${art.art.replace(/\n/g, ' ')} ${columns.join(' ')}`
   const lost = svgs.map(svg => [...svg.matchAll(/<(?:text|tspan)\b([^>]*)>([^<]+)</g)].map(([, attrs, raw]) => [attrs, raw.replace(/&(?:amp|lt|gt|quot|#39);/g, e => ENTITIES[e]).trim()])
@@ -72,12 +78,12 @@ const colorDefects = (art, canvas, add) => art.rows.forEach((row, r) => row.forE
 }))
 
 const boxDefects = (art, add) => {
-  const rows = art.art.split('\n').map(l => [...l])
+  const rows = art.art.split('\n').map(cellsOf)
   rows.forEach((row, r) => {
     const line = row.join('')
     for (let c = 1; c < row.length - 1; c++) {
       const ch = row[c], before = row.slice(0, c), joined = /─/.test(row[c - 1] + row[c + 1])
-      if ('┬┤├'.includes(ch) && before.lastIndexOf('╭') > before.lastIndexOf('╮') && row.indexOf('╮', c) > -1 && joined && !VBAR.test(rows[r - 1]?.[c] ?? ' ')) add('merged-box', r, line)
+      if (ch && '┬┤├'.includes(ch) && before.lastIndexOf('╭') > before.lastIndexOf('╮') && row.indexOf('╮', c) > -1 && joined && !VBAR.test(rows[r - 1]?.[c] ?? ' ')) add('merged-box', r, line)
       if (ch === '┴' && before.lastIndexOf('╰') > before.lastIndexOf('╯') && row.indexOf('╯', c) > -1 && joined && !VBAR.test(rows[r + 1]?.[c] ?? ' ')) add('merged-box', r, line)
       if (VBAR.test(ch) && VBAR.test(row[c + 1])) add('double-bar', r, line)
     }

@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import { drawPele, toAnsi } from 'pelext'
 import { PALETTES } from 'pelext/palettes'
 import { render } from 'pelext/pele'
+import { defects } from '../tools/detect.mjs'
 
 const PIE = 'pie title Where time goes\n  "Layout" : 45\n  "Edges" : 30\n  "Text" : 25'
 const FLOW = 'flowchart TD\n  A[Start] --> B{Working?}\n  B -->|yes| C[Ship]\n  B -->|no| D[Debug]'
@@ -143,6 +144,13 @@ test('combining marks stay on the letter they mark and take no cell', () => {
     assert.equal(art.art.replace(/\p{Mn}/gu, ''), bare.art)
     assert.equal(art.width, bare.width)
   }
+})
+
+test('the defect scan reads a vertical label with combining marks in the column it is drawn in', () => {
+  const svgs = [], source = 'xychart-beta\n  x-axis [a, b, c]\n  y-axis "café" 0 --> 100\n  bar [30, 60, 90]'.normalize('NFD')
+  const art = drawPele((text, options) => { const result = render(text, options); svgs.push(result.svg); return result }, source, mocha, 60)
+  assert.ok(art.art.split('\n').some(line => line.startsWith('é ')))
+  assert.equal(defects(art, svgs, mocha)['lost-text'], undefined)
 })
 
 test('edges run right up to filled nodes', () => {
