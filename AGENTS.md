@@ -13,13 +13,13 @@ pelext draws Mermaid diagrams on a terminal's cell grid. Pele lays a diagram out
 | `bin/pelext.mjs` | the command |
 | `test/` | `node --test` suites; they import the package by name, so they test `dist/` |
 | `samples/` | one `.mmd` per diagram type, drawn in the README images |
-| `tools/` | the quality harness: `corpus.mjs` generates diagrams, `compare.mjs` diffs two engines, `defects.mjs` scans for glitches with `detect.mjs`; `lib.mjs` is shared |
+| `tools/` | the quality harness: `corpus.mjs` generates diagrams, `compare.mjs` diffs two engines, `defects.mjs` scans for glitches with `detect.mjs`; `lib.mjs` is shared; `widths.mjs` regenerates the width table |
 | `docs/images/` | README images |
 
 ## Rules
 
 - No code comments. The why goes in the commit message.
-- Every dependency and copied palette must be MIT. The engine imports nothing; Pele is a peer dependency, TypeScript the only other dev dependency. Add a dependency only when writing it ourselves is unreasonable, and record it in THIRD_PARTY_NOTICES.md.
+- Every dependency and copied palette must be MIT; the width table is generated from Unicode's own data, under the Unicode License v3. The engine imports nothing; Pele is a peer dependency, TypeScript the only other dev dependency. Add a dependency only when writing it ourselves is unreasonable, and record it in THIRD_PARTY_NOTICES.md.
 - Never copy code from other projects. Read them to learn, then write our own.
 - Lean: `src/pelext.ts` stays one file of at most 1562 lines. A fix that adds lines pays for them elsewhere.
 - Every change to `src/` rebuilds `dist/` in the same commit. After `npm run build`, `git status dist` shows nothing new.
@@ -61,7 +61,7 @@ Known flags that are not glitches: `nearmiss` on xychart line series, which star
 
 - Pele's `render` runs several times per drawing. A diagram wider than `columns` is laid out again narrower, then top-down; a sequence diagram tries up to 5 configurations. The first diagram of a kind pays Pele's first-run cost, about 30 ms for a flowchart.
 - cellsmith runs the engine a handful of times per session, in a runtime that never reaches V8's optimizing tiers. There cost tracks the work done, and destructuring, `for...of`, `matchAll` and callback array helpers in hot loops cost far more than in warm Node. `node --jitless` ranks costs the same way.
-- Wide characters (CJK, emoji) take two cells: `charWidth` in the engine and `WIDE` in `tools/detect.mjs` must agree.
+- Wide characters (CJK, emoji) take two cells, marks and format characters none: `charWidth` in the engine and `WIDE` in `tools/detect.mjs` must agree. Both come from one table, which `node tools/widths.mjs EastAsianWidth.txt DerivedGeneralCategory.txt` rebuilds in place from a Unicode release's files (unicode.org/Public/<version>/ucd/, the second under `extracted/`). On a new Unicode version, run it, check `compare` and the tests, and set the version in THIRD_PARTY_NOTICES.md.
 - The tools fix "today" at 2026-10-19 so gantt charts, which mark today, draw the same on every run.
 - Pele's own releases move layouts: from 1.6.0 to 1.7.0, 162 of 29376 drawings changed, all flowcharts, most with CJK labels. `compare` runs both engines on one Pele, so before bumping Pele run `npm run defects` on the old and the new version and look at the flowcharts and any new defects with `pelext --plain`.
 
