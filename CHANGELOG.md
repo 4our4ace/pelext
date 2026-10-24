@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-24
+
 ### Changed
 
 - Character widths follow Unicode 18.0's own data: wide and fullwidth characters, emoji such as ✅, ❌ and ⭐ among them, take two cells; combining and enclosing marks and Hangul medial vowels and final consonants take none and stay on the character before them, so हिन्दी, Thai and a decomposed é draw whole; format characters, controls and variation selectors are left out, so an emoji sequence joined by ZWJ draws as its emoji side by side. A drawing's width counts them the same way.
