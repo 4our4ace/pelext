@@ -6,6 +6,7 @@
 
 - Character widths follow Unicode 18.0's own data: wide and fullwidth characters, emoji such as ✅, ❌ and ⭐ among them, take two cells; combining and enclosing marks and Hangul medial vowels and final consonants take none and stay on the character before them, so हिन्दी, Thai and a decomposed é draw whole; format characters, controls and variation selectors are left out, so an emoji sequence joined by ZWJ draws as its emoji side by side. A drawing's width counts them the same way.
 - The 16 palettes are rebuilt from each scheme's published colors, mapped onto the palette fields by one rule for all of them. On a light scheme, node and series colors that read under 3:1 on its background come after the ones that read well.
+- `dist/pelext.js` carries a width table generated from the Unicode Character Database, so a vendored copy keeps the Unicode License v3 notice from THIRD_PARTY_NOTICES.md with it or in its documentation.
 
 ## [0.2.1] - 2026-10-22
 
