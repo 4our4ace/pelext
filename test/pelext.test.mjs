@@ -502,7 +502,7 @@ test('a mindmap branch squeezed to no length ends in a line stub, not a braille 
 })
 
 test('the lines of a wrapped label stay on consecutive rows', () => {
-  const source = 'flowchart LR\n  U[You in unii TUI] --> M[Memory tree<br/>builds view]\n  M --> C["claude -p<br/>system = Unii prompt + view<br/>--mcp-config zoom/date"]\n  C -- stream-json --> U\n  C -- messages --> M\n  M -. summaries via<br/>claude -p haiku .-> M'
+  const source = 'flowchart LR\n  U[You in illi TUI] --> M[Memory tree<br/>builds view]\n  M --> C["claude -p<br/>system = illi prompt + view<br/>--mcp-config zoom/date"]\n  C -- stream-json --> U\n  C -- messages --> M\n  M -. summaries via<br/>claude -p haiku .-> M'
   const lines = drawPele(render, source, mocha, 120).art.split('\n')
   assert.equal(lines.findIndex(l => l.includes('zoom/date')), lines.findIndex(l => l.includes('--mcp-config')) + 1)
   const members = drawPele(render, 'classDiagram\n  class GPU89 {\n    +int ok\n    int c\n  }\n  class DB11 {\n    -String ok\n    String layout\n    +layout() void\n    +navecaf()\n  }\n  DB11 "*" ..> "many" DB11', PALETTES.mono, 60).art.split('\n')
