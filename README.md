@@ -50,9 +50,9 @@ console.log(art ? toAnsi(art).join('\n') : source)
 | `PALETTES` (`pelext/palettes`) | the 16 palettes by name |
 | `render` (`pelext/pele`) | Pele's `render` with the 13 diagram types below registered |
 
-`rows` holds the drawing as spans, `{ text, fg?, bg?, bold?, inverse? }` with colors as `#rrggbb`, for UIs that style text themselves. `art` is the same drawing as plain text. A palette is `{ canvas, text?, muted?, line?, border?, accent?, critical?, highlight?, series, hues }`: `canvas` is the background the drawing sits on, and `series` and `hues` color chart series and nodes in turn.
+`rows` holds the drawing as spans, `{ text, fg?, bg?, bold?, inverse? }` with colors as `#rrggbb`, for UIs that style text themselves. `art` is the same drawing as plain text. Widths follow Unicode's data: wide characters such as CJK and most emoji take two cells, and combining marks share the cell of the letter before them, so a span's text can hold more characters than it takes cells. `width` counts cells. A palette is `{ canvas, text?, muted?, line?, border?, accent?, critical?, highlight?, series, hues }`: `canvas` is the background the drawing sits on, and `series` and `hues` color chart series and nodes in turn.
 
-`drawPele` takes Pele's `render` as an argument, and `dist/pelext.js` has no imports, so a project can vendor that one file next to its own Pele build, as cellsmith does.
+`drawPele` takes Pele's `render` as an argument, and `dist/pelext.js` has no imports, so a project can vendor that one file next to its own Pele build, as cellsmith does. Its width table is generated from Unicode's data, so a vendored copy keeps the Unicode notice from [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) with it or in its documentation, as the Unicode License v3 asks.
 
 ## What it draws
 
@@ -76,6 +76,6 @@ npm run defects     # scans every drawing for glitches: lost text, broken lines,
 
 ## Credits and license
 
-MIT, © [4our4ace](https://github.com/4our4ace). Layouts by [Pele](https://github.com/obsidianmd/pele), MIT, © kepano. The palettes come from their projects, all MIT: see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+MIT, © [4our4ace](https://github.com/4our4ace). Layouts by [Pele](https://github.com/obsidianmd/pele), MIT, © kepano. The palettes come from their projects, all MIT, and the character width table is generated from the Unicode Character Database, under the Unicode License v3: see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 pelext is an independent project. It is not affiliated with or endorsed by Obsidian, the Pele project or the Mermaid project.

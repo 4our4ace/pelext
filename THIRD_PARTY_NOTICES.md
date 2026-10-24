@@ -1,6 +1,6 @@
 # Third-party notices
 
-pelext bundles no third-party code. [Pele](https://github.com/obsidianmd/pele) (MIT, Copyright (c) 2026 kepano) is a peer dependency, installed next to pelext and imported by `pelext/pele` and the CLI.
+pelext bundles no third-party code. Its character width table is data generated from the Unicode Character Database, credited below. [Pele](https://github.com/obsidianmd/pele) (MIT, Copyright (c) 2026 kepano) is a peer dependency, installed next to pelext and imported by `pelext/pele` and the CLI.
 
 ## Color palettes
 

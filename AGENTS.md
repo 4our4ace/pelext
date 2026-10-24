@@ -28,6 +28,18 @@ pelext draws Mermaid diagrams on a terminal's cell grid. Pele lays a diagram out
 - Every fixed glitch gets a test in `test/pelext.test.mjs` that fails without the fix.
 - CHANGELOG entries go under `## [Unreleased]`. Only the release commit sets the version.
 
+## Palettes
+
+Every palette maps its scheme's published colors onto the fields by one rule, and a new palette follows it too. The scheme's source goes in THIRD_PARTY_NOTICES.md.
+
+- `canvas`: the scheme's default background.
+- `line` (and `border`): the faintest tone on the scheme's neutral ramp, from background to body text, that reads at least 3:1 on the canvas. GitHub's ramp is its `fg` tokens.
+- `text`: the body text; where `line` already is the body text, the next stronger tone.
+- `muted`: the ramp's next tone after `line`, short of `text`, else `line` itself. It also fills the bars that are not the tallest.
+- `accent` (and `highlight`): the scheme's named accent, else its signature color. `critical`: its red.
+- `series` (and `hues`): the scheme's own blue, orange, green, red, purple, yellow, cyan and pink, in that order, leaving out a hue it has none of. Hues under 3:1 on the canvas move to the end, in the same order.
+- `mono`: canvas `#000000` and no other color.
+
 ## Verify
 
 ```
@@ -55,13 +67,14 @@ The defect kinds, from `tools/detect.mjs`:
 
 Run `defects` with `--themes` set to all 16 palette names after a color change: the default checks 3.
 
-Known flags that are not glitches: `nearmiss` on xychart line series, which start at the first category, one cell right of the y-axis.
+Known flags that are not glitches: `nearmiss` on xychart line series, which start at the first category, one cell right of the y-axis (11 per palette). Known and accepted: in `mono`, sankey `nearmiss` 4 and `touch-fill` 1, drawn the same since 0.2.1.
 
 ## Engine facts that bite
 
 - Pele's `render` runs several times per drawing. A diagram wider than `columns` is laid out again narrower, then top-down; a sequence diagram tries up to 5 configurations. The first diagram of a kind pays Pele's first-run cost, about 30 ms for a flowchart.
 - cellsmith runs the engine a handful of times per session, in a runtime that never reaches V8's optimizing tiers. There cost tracks the work done, and destructuring, `for...of`, `matchAll` and callback array helpers in hot loops cost far more than in warm Node. `node --jitless` ranks costs the same way.
-- Wide characters (CJK, emoji) take two cells, marks and format characters none: `charWidth` in the engine and `WIDE` in `tools/detect.mjs` must agree. Both come from one table, which `node tools/widths.mjs EastAsianWidth.txt DerivedGeneralCategory.txt` rebuilds in place from a Unicode release's files (unicode.org/Public/<version>/ucd/, the second under `extracted/`). On a new Unicode version, run it, check `compare` and the tests, and set the version in THIRD_PARTY_NOTICES.md.
+- Character widths come from one table generated from Unicode's data. `widthCode` gives each code point one of four codes: 0 for controls, format characters (ZWJ among them) and variation selectors, which the drawing leaves out; 1; 2 for wide and fullwidth characters (CJK, emoji); 3 for combining and enclosing marks and Hangul medial vowels and final consonants, which take no cell and join the cell the label last wrote. `charWidth` folds 3 to 0, so measuring and wrapping count marks as nothing. A cell's text is one character or a letter with its marks, so code that reads `cv.ch` or span text must not assume one code point per cell. `WIDE` and `ZERO` in `tools/detect.mjs` come from the same table and must agree with it.
+- `node tools/widths.mjs EastAsianWidth.txt DerivedGeneralCategory.txt` rebuilds the table and both classes in place from a Unicode release's files (unicode.org/Public/<version>/ucd/, the second under `extracted/`). It checks its encoding round trip, the engine's fast path below U+0300 and that nothing below U+1100 is wide (the output loop counts those as one cell unasked), and writes nothing unless every check passes. On a new Unicode version, run it, check `compare` and the tests, and set the version in THIRD_PARTY_NOTICES.md.
 - The tools fix "today" at 2026-10-19 so gantt charts, which mark today, draw the same on every run.
 - Pele's own releases move layouts: from 1.6.0 to 1.7.0, 162 of 29376 drawings changed, all flowcharts, most with CJK labels. `compare` runs both engines on one Pele, so before bumping Pele run `npm run defects` on the old and the new version and look at the flowcharts and any new defects with `pelext --plain`.
 
